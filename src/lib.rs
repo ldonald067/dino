@@ -117,8 +117,8 @@ turbo::go! {
     let bg_x = -100 - (state.frame / 10) as i32;
     let bg_width = 256;
 
-    // Threshold to toggle between day and night mode (5 points)
-    let night_mode_score_threshold = 5;
+    // Threshold to toggle between day and night mode (12 points)
+    let night_mode_score_threshold = 12;
 
     let cloud_width = 32;
     let gap = 24;
@@ -133,7 +133,7 @@ if state.score >= night_mode_score_threshold {
         // Show stars
         for col in 0..9 {
             let x = (col * (cloud_width + gap) - x_offset) % total_width;
-            let y = 8; // Adjust y-position for stars if necessary
+            let y = 8;
 
             // Draw the stars for smooth scrolling
             sprite!("star", x = x, y = y);
@@ -149,7 +149,7 @@ if state.score >= night_mode_score_threshold {
         // Show clouds
         for col in 0..9 {
             let x = (col * (cloud_width + gap) - x_offset) % total_width;
-            let y = 8; // Adjust y-position for clouds
+            let y = 8;
 
             // Draw the clouds for smooth scrolling
             sprite!("clouds21", x = x, y = y);
@@ -179,7 +179,7 @@ if state.score >= night_mode_score_threshold {
         state.tree_positions[i] -= tree_speed_factor;
 
         if state.tree_positions[i] < -32 {
-            state.tree_positions[i] = 256 + (rand() % 150 + 100) as i32; // Increase spacing range between trees
+            state.tree_positions[i] = 256 + (rand() % 200 + 200) as i32; // More spacing between trees
             state.score += 1;
         }
 
@@ -199,7 +199,7 @@ for i in 0..state.tree16_positions.len() {
     state.tree16_positions[i] -= tree_speed_factor;
 
     if state.tree16_positions[i] < -16 {
-        state.tree16_positions[i] = 256 + (rand() % 150 + 100) as i32; // Increase spacing range for 16x16 trees
+        state.tree16_positions[i] = 256 + (rand() % 200 + 200) as i32; // More spacing for 16x16 trees
         state.score += 1;
     }
 
@@ -223,37 +223,45 @@ for i in 0..state.tree16_positions.len() {
     sprite!("tree16x16", x = tree16_x, y = 118, fps = fps::FAST); // Y-position of 16x16 trees
 }
 
-    // Bird attack logic
-    if !state.bird_active && rand() % 200 == 0 {
-        state.bird_active = true;
-        state.bird_x = (rand() % 256) as f32;
-        state.bird_y = -32.0;
-        state.bird_velocity = 1.0 + (rand() % 3) as f32;
+// Bird attack logic
+if !state.bird_active && rand() % 20 == 0 {  // Increase frequency of bird spawning
+    state.bird_active = true;
+    state.bird_x = (rand() % 256) as f32;  // Bird starts at a random x position
+    state.bird_y = -32.0;  // Bird starts off-screen, from the sky
+    state.bird_velocity = 2.0 + (rand() % 2) as f32;  // Increase bird speed for faster descent
+}
+
+if state.bird_active {
+    // Bird moves downwards
+    state.bird_y += state.bird_velocity;
+
+    // Reset bird if it moves off-screen
+    if state.bird_y > 144.0 {
+        state.bird_active = false;
     }
 
-    if state.bird_active {
-        state.bird_y += state.bird_velocity;
+    // Player's bounding box
+    let player_right = state.player_x + 16.0;
+    let player_left = state.player_x;
+    let player_bottom = state.player_y + 16.0;
+    let player_top = state.player_y;
 
-        state.bird_animation_frame = (state.frame / 8) % 4;
+    // Bird's bounding box
+    let bird_right = state.bird_x + 120.0;
+    let bird_left = state.bird_x;
+    let bird_bottom = state.bird_y + 120.0;
+    let bird_top = state.bird_y;
 
-        let player_center = (state.player_x + 16.0, state.player_y + 16.0);
-        let bird_center = (state.bird_x + 16.0, state.bird_y + 16.0);
-
-        let dx = player_center.0 - bird_center.0;
-        let dy = player_center.1 - bird_center.1;
-        let distance = (dx * dx + dy * dy).sqrt();
-
-        if distance < 16.0 + 16.0 {
-            state.is_game_over = true;
-        }
-
-        if state.bird_y > 144. {
-            state.bird_active = false;
-        }
-
-        // Use bird sprite without splitting, as we have just one bird image file
+    // Collision detection (bounding box overlap check)
+    if player_right > bird_left && player_left < bird_right &&
+       player_bottom > bird_top && player_top < bird_bottom {
+        state.is_game_over = true;
+        sprite!("bird_collided", x = state.bird_x as i32, y = state.bird_y as i32, fps = fps::FAST);
+    } else {
         sprite!("bird", x = state.bird_x as i32, y = state.bird_y as i32, fps = fps::FAST);
     }
+}
+
 
     text!("Score: {}", state.score; x = 170, y = 30, font = Font::L, color = 0x0000ffff);
     text!("High Score: {}", state.high_score; x = 10, y = 30, font = Font::M, color = 0x0000ffff);
@@ -261,5 +269,4 @@ for i in 0..state.tree16_positions.len() {
     state.frame += 1;
     state.save();
 }
-
 
